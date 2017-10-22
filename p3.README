@@ -1,0 +1,37 @@
+lmokada
+
+Implementation Explanation:
+
+WCMapper:
+WCMapper just accesses the document name and lines in the files.
+Then it splits the lines using tokenizer and emits the key by combining the token and document name as token +"@"+document name with value as 1.
+
+WCReducer:
+WCReducer receives the key value in the format  (word@document , 1 )
+It just adds all values in the value iterator for a given word@documnet
+
+DSMapper:
+DSMapper is doing nothing but the rearrangement of the data from file lines.
+It first splits the document lines with tab. This gives provides separated (word@document) and wordCount
+Then splitting first part with '@' gives us separated word and document
+Now just concat the strings for the required format value - > word + '=' + wordCount
+
+DSReducer:
+if one loop, word and wordcount are separated from the value pair using the split function of string.
+Also, calculate total words in a document in total variable.
+Then in the second loop, it creates the new list from total words and wordcount as wordcount/total
+Then just emits the ((word@document) , (wordCount/docSize)) by iterating over the list and concatenating the required strings;
+            
+
+TFIDFMapper:
+TFIDFMapper is doing nothing but the rearrangement of the data from file lines.
+It splits the line in the input file using split to a seperate word, document name, word count and docSize. Then it just concats the strings to form key and values as word and document+ "=" + wordCount+"/"+docSize respectively.
+
+TFIDFReducer:
+TFIDFReducer first creates the list of all values by iterating over the values iterator also calculates the numDocsWithWord by just incrementing a counter.
+Then in next loop, we perform the split operation on the values to get sepearted document, wordCount and docSize. Then tfidf value is calculated from these values using formula  TFIDF = (wordCount/docSize) * ln(numDocs/numDocsWithWord). 
+In the same loop we then just create the key by concatenating the strings document+ "@" + word and value as TFIDF value and store them in the map.
+
+
+
+
