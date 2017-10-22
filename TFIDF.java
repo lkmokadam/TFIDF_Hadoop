@@ -71,7 +71,7 @@ public class TFIDF {
 			
 		// Create and execute Document Size job
 		
-		Job jobc = Job.getInstance(conf, "data count");
+		Job jobc = Job.getInstance(conf, "data size");
 		jobc.setJarByClass(TFIDF.class);
 		jobc.setMapperClass(DSMapper.class);
 		jobc.setReducerClass(DSReducer.class);
@@ -284,7 +284,6 @@ public class TFIDF {
 				System.out.println(value);
 				String valueArr[] = value.split("=");
 				String dividedata[] = valueArr[1].toString().split("/");
-				
 				// finds the tfidf value
 				Double tfidfValue = (Double.parseDouble(dividedata[0])/Double.parseDouble(dividedata[1])) * Math.log(numDocs/numDocsWithWord);
 				

@@ -1,6 +1,7 @@
 lmokada
-
-Implementation Explanation:
+##########################################################################
+Implementation Explanation
+##########################################################################
 
 WCMapper:
 WCMapper just accesses the document name and lines in the files.
@@ -32,6 +33,51 @@ TFIDFReducer first creates the list of all values by iterating over the values i
 Then in next loop, we perform the split operation on the values to get sepearted document, wordCount and docSize. Then tfidf value is calculated from these values using formula  TFIDF = (wordCount/docSize) * ln(numDocs/numDocsWithWord). 
 In the same loop we then just create the key by concatenating the strings document+ "@" + word and value as TFIDF value and store them in the map.
 
+##################################################
+Job creation and setup
+##################################################
+
+WordCount:
+
+In word count, we providede the WCMapper , WCReducer to setMapperClass and setReducerClass function
+The output key and output value class set using the respectiove functon. Input path and out put path is passed as provided.
+waitForCompletion function is used to make sure the previous job completes before launching the next job. In this came we make sure the word count job completes befor data count job starts.
+Job job = Job.getInstance(conf, "word count");
+job.setJarByClass(TFIDF.class);
+job.setMapperClass(WCMapper.class);
+job.setCombinerClass(WCReducer.class);
+job.setReducerClass(WCReducer.class);
+job.setOutputKeyClass(Text.class);
+job.setOutputValueClass(IntWritable.class);
+FileInputFormat.addInputPath(job, wcInputPath);
+FileOutputFormat.setOutputPath(job, wcOutputPath);
+job.waitForCompletion(true); 
+    
+Using same technique the job for data counr and tfidf value calculation has been set as follows.
+
+Data Size:
+Job jobc = Job.getInstance(conf, "data size");
+jobc.setJarByClass(TFIDF.class);
+jobc.setMapperClass(DSMapper.class);
+jobc.setReducerClass(DSReducer.class);
+jobc.setOutputKeyClass(Text.class);
+jobc.setOutputValueClass(Text.class);
+FileInputFormat.addInputPath(jobc, dsInputPath);
+FileOutputFormat.setOutputPath(jobc, dsOutputPath);
+jobc.waitForCompletion(true);
+
+TFIDF:
+Job tfidfJob = Job.getInstance(conf, "tfidf");
+tfidfJob.setJarByClass(TFIDF.class);
+tfidfJob.setMapperClass(TFIDFMapper.class);
+tfidfJob.setReducerClass(TFIDFReducer.class);
+tfidfJob.setOutputKeyClass(Text.class);
+tfidfJob.setOutputValueClass(Text.class);
+FileInputFormat.addInputPath(tfidfJob, tfidfInputPath);
+FileOutputFormat.setOutputPath(tfidfJob, tfidfOutputPath);
+tfidfJob.waitForCompletion(true);
+
+In case of word count, we also have provided the combiner which executes after mappper on each mapper computing node but before reducer. This help reducing the workload on the reducer system. WCReducer class is provided for combiner.
 
 
 
