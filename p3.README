@@ -13,15 +13,14 @@ It just adds all values in the value iterator for a given word@documnet
 
 DSMapper:
 DSMapper is doing nothing but the rearrangement of the data from file lines.
-It first splits the document lines with tab. This gives provides separated (word@document) and wordCount
+It first splits the document lines with tab. This provides separated (word@document) and wordCount
 Then splitting first part with '@' gives us separated word and document
-Now just concat the strings for the required format value - > word + '=' + wordCount
+Now just concat the strings for the required format value as word + '=' + wordCount
 
 DSReducer:
-if one loop, word and wordcount are separated from the value pair using the split function of string.
-Also, calculate total words in a document in total variable.
+if one loop, word and wordcount are separated from the value pair using the split function of string. Also, it calculate total words in a document in total variable.
 Then in the second loop, it creates the new list from total words and wordcount as wordcount/total
-Then just emits the ((word@document) , (wordCount/docSize)) by iterating over the list and concatenating the required strings;
+Then just emits the ((word@document) , (wordCount/docSize)) by iterating over the list and concatenating the required strings
             
 
 TFIDFMapper:
