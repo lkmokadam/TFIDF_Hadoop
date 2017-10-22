@@ -67,24 +67,35 @@ public class TFIDF {
 		job.setOutputValueClass(IntWritable.class);
 		FileInputFormat.addInputPath(job, wcInputPath);
 		FileOutputFormat.setOutputPath(job, wcOutputPath);
-		job.waitForCompletion(true);
+		job.waitForCompletion(true); 
 			
 		// Create and execute Document Size job
 		
 		Job jobc = Job.getInstance(conf, "data count");
 		jobc.setJarByClass(TFIDF.class);
 		jobc.setMapperClass(DSMapper.class);
-		jobc.setCombinerClass(DSReducer.class);
+		//jobc.setCombinerClass(DSReducer.class);
 		jobc.setReducerClass(DSReducer.class);
 		jobc.setOutputKeyClass(Text.class);
-		jobc.setOutputValueClass(IntWritable.class);
+		jobc.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(jobc, dsInputPath);
 		FileOutputFormat.setOutputPath(jobc, dsOutputPath);
+		jobc.waitForCompletion(true);
+		
 		
 		//Create and execute TFIDF job
 		
-			/************ YOUR CODE HERE ************/
-		System.exit(jobc.waitForCompletion(true) ? 0 : 1);
+		Job tfidfJob = Job.getInstance(conf, "tfidf");
+		tfidfJob.setJarByClass(TFIDF.class);
+		tfidfJob.setMapperClass(TFIDFMapper.class);
+		//jobc.setCombinerClass(DSReducer.class);
+		tfidfJob.setReducerClass(TFIDFReducer.class);
+		tfidfJob.setOutputKeyClass(Text.class);
+		tfidfJob.setOutputValueClass(Text.class);
+		FileInputFormat.addInputPath(tfidfJob, tfidfInputPath);
+		FileOutputFormat.setOutputPath(tfidfJob, tfidfOutputPath);
+		tfidfJob.waitForCompletion(true);
+		
     }
 	
 	/*
@@ -101,7 +112,8 @@ public class TFIDF {
 		private static Text data = new Text();
 		
 		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
-			String fileName = ((FileSplit) context.getInputSplit()).getPath().getName();		
+			String fileName =  ((FileSplit) context.getInputSplit()).getPath().getName();	
+
 			StringTokenizer tokenizer = new StringTokenizer(value.toString());
 			while (tokenizer.hasMoreTokens()) {
 				data.set(tokenizer.nextToken()+"@"+fileName);
@@ -127,8 +139,7 @@ public class TFIDF {
 			int sum = 0;
 			for( IntWritable value : values){
 				sum += value.get();
-			}
-
+			}	
 			context.write(key,new IntWritable(sum));
 		}
 		
@@ -148,16 +159,12 @@ public class TFIDF {
 		
 		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
 			int i = 0;
-			System.out.println(key.toString());	
-			try{
-			if( i==0) throw new RuntimeException("-->"+key.toString());
-			} catch(RuntimeException e){
-				i=0;
-			}
-			String splittedKey[] = key.toString().split("@");
-			if (splittedKey.length != 2) return;
+			System.out.println(key.toString()+"----"+value.toString());	
+
+			String valueArr[] = value.toString().split("\t");
+			String splittedKey[] = valueArr[0].toString().split("@");
 			keyData.set(splittedKey[1]);
-			valueData.set(splittedKey[0]+"="+value.toString());
+			valueData.set(splittedKey[0]+"="+valueArr[1]);
 
 			context.write(keyData,valueData);		   
 		}
@@ -179,22 +186,27 @@ public class TFIDF {
 			String document = key.toString();
 			int total=0;
 			ArrayList <String> wordList = new ArrayList<String> ();
-			ArrayList <Integer> countList = new ArrayList<Integer> ();
-			ArrayList <Integer> wordByCountList = new ArrayList<Integer> ();
+			ArrayList <String> countList = new ArrayList<String> ();
+			ArrayList <String> wordByCountList = new ArrayList<String> ();
 
 			for( Text value : values){
 				String[] splittedKey = value.toString().split("=");
 				wordList.add(splittedKey[0]);
-				countList.add(Integer.parseInt(splittedKey[1]));
+				countList.add(splittedKey[1]);
 				total+=Integer.parseInt(splittedKey[1]);
 			} 
-
-			for(Integer count : countList ){
-				wordByCountList.add(count/total);
+			
+			for(String count : countList ){
+				wordByCountList.add(count+"/"+total);
 			}
 
-			for( int i = 0 ; i < wordList.size();i++){
-				context.write(new Text(wordList.get(i)+"@"+document), new Text(wordByCountList.get(i).toString()));
+			System.out.println(wordByCountList + "  - > " + wordList + " -- "  + wordList.size());
+
+			Iterator<String> it1 = wordList.iterator();
+			Iterator<String> it2 = wordByCountList.iterator();
+			
+			while (it1.hasNext() && it2.hasNext()) {				
+				context.write(new Text(it1.next()+"@"+document), new Text(it2.next().toString()));
 			}
 		}
 		
@@ -208,7 +220,19 @@ public class TFIDF {
 	 */
 	public static class TFIDFMapper extends Mapper<Object, Text, Text, Text> {
 
-		/************ YOUR CODE HERE ************/
+		private static Text keyData = new Text();
+		private static Text valueData = new Text();
+
+		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
+			int i = 0;
+			System.out.println( value.toString());
+			String valueArr[] = value.toString().split("\t");
+			String splittedKey[] = valueArr[0].toString().split("@");
+			keyData.set(splittedKey[0]);
+			valueData.set(splittedKey[1]+"="+valueArr[1]);
+			System.out.println( keyData.toString()+  "   " + valueData );
+			context.write(keyData,valueData);		   
+		}
 		
     }
 
@@ -228,9 +252,9 @@ public class TFIDF {
 	 *       extremely large datasets, having a for loop iterate through all the (key,value) pairs 
 	 *       is highly inefficient!
 	 */
-	//public static class TFIDFReducer extends Reducer<Text, Text, Text, Text> {
+	public static class TFIDFReducer extends Reducer<Text, Text, Text, Text> {
 		
-		/*private static int numDocs;
+		private static int numDocs;
 		private Map<Text, Text> tfidfMap = new HashMap<>();
 		
 		// gets the numDocs value and stores it
@@ -240,20 +264,38 @@ public class TFIDF {
 		}
 		
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+			float numDocsWithWord = 0;
+			ArrayList <String> valueList = new ArrayList<String> ();
+			for (Text value : values){
+				valueList.add(value.toString());
+				numDocsWithWord++;
+			}
+
+
+
+			for (String value : valueList){
+				System.out.println(value);
+				String valueArr[] = value.split("=");
+				String dividedata[] = valueArr[1].toString().split("/");
+
+				Double tfidfValue = (Double.parseDouble(dividedata[0])/Double.parseDouble(dividedata[1])) * Math.log(numDocs/numDocsWithWord);
+				
+				tfidfMap.put(new Text(valueArr[0]+"@"+key.toString()), new Text(tfidfValue.toString())) ;
+			}
 			
-			/************ YOUR CODE HERE ************/
+
 	 
 			//Put the output (key,value) pair into the tfidfMap instead of doing a context.write
-			//tfidfMap.put(/*document@word*/, /*TFIDF*/);*/
-		//}
+			
+		}
 		
 		// sorts the output (key,value) pairs that are contained in the tfidfMap
-		/*protected void cleanup(Context context) throws IOException, InterruptedException {
+		protected void cleanup(Context context) throws IOException, InterruptedException {
             Map<Text, Text> sortedMap = new TreeMap<Text, Text>(tfidfMap);
 			for (Text key : sortedMap.keySet()) {
                 context.write(key, sortedMap.get(key));
             }
         }
 		
-    }*/
+    }
 }
