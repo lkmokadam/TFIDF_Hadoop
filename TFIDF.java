@@ -74,7 +74,6 @@ public class TFIDF {
 		Job jobc = Job.getInstance(conf, "data count");
 		jobc.setJarByClass(TFIDF.class);
 		jobc.setMapperClass(DSMapper.class);
-		//jobc.setCombinerClass(DSReducer.class);
 		jobc.setReducerClass(DSReducer.class);
 		jobc.setOutputKeyClass(Text.class);
 		jobc.setOutputValueClass(Text.class);
@@ -88,7 +87,6 @@ public class TFIDF {
 		Job tfidfJob = Job.getInstance(conf, "tfidf");
 		tfidfJob.setJarByClass(TFIDF.class);
 		tfidfJob.setMapperClass(TFIDFMapper.class);
-		//jobc.setCombinerClass(DSReducer.class);
 		tfidfJob.setReducerClass(TFIDFReducer.class);
 		tfidfJob.setOutputKeyClass(Text.class);
 		tfidfJob.setOutputValueClass(Text.class);
@@ -112,8 +110,11 @@ public class TFIDF {
 		private static Text data = new Text();
 		
 		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
+
+			// stores the document name in the filename
 			String fileName =  ((FileSplit) context.getInputSplit()).getPath().getName();	
 
+			// tokenize the string and create the key value pair.
 			StringTokenizer tokenizer = new StringTokenizer(value.toString());
 			while (tokenizer.hasMoreTokens()) {
 				data.set(tokenizer.nextToken()+"@"+fileName);
@@ -136,6 +137,8 @@ public class TFIDF {
 		
 		public void reduce(Text key, Iterable<IntWritable> values, Context context ) throws IOException, InterruptedException {
 
+			// sums all the values in the values IntWritable iterator, 
+			// gives the total occy=urance of ward in the document
 			int sum = 0;
 			for( IntWritable value : values){
 				sum += value.get();
@@ -158,14 +161,12 @@ public class TFIDF {
 		private static Text valueData = new Text();
 		
 		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
-			int i = 0;
-			System.out.println(key.toString()+"----"+value.toString());	
-
+			// splist the doc lines with tab then first part with '@', 
+			// rearranges the key and valus as required 
 			String valueArr[] = value.toString().split("\t");
 			String splittedKey[] = valueArr[0].toString().split("@");
 			keyData.set(splittedKey[1]);
 			valueData.set(splittedKey[0]+"="+valueArr[1]);
-
 			context.write(keyData,valueData);		   
 		}
 		
@@ -189,6 +190,8 @@ public class TFIDF {
 			ArrayList <String> countList = new ArrayList<String> ();
 			ArrayList <String> wordByCountList = new ArrayList<String> ();
 
+			// stores all words and there respective word count in list.
+			// Also, stores total words in document in total variable
 			for( Text value : values){
 				String[] splittedKey = value.toString().split("=");
 				wordList.add(splittedKey[0]);
@@ -196,12 +199,11 @@ public class TFIDF {
 				total+=Integer.parseInt(splittedKey[1]);
 			} 
 			
+			// create the count/total in the list
 			for(String count : countList ){
 				wordByCountList.add(count+"/"+total);
 			}
-
-			System.out.println(wordByCountList + "  - > " + wordList + " -- "  + wordList.size());
-
+			// created the iterator for wordList and wordByCount list, and writing the key value pair in context
 			Iterator<String> it1 = wordList.iterator();
 			Iterator<String> it2 = wordByCountList.iterator();
 			
@@ -224,6 +226,10 @@ public class TFIDF {
 		private static Text valueData = new Text();
 
 		public void map(Object key, Text value, Context context ) throws IOException, InterruptedException {
+
+			// rearrangement is done as described in the comment section above
+			// first split by tab then split first part by '@', access respective part of key and element 
+			// and joins to for required arrangement
 			int i = 0;
 			System.out.println( value.toString());
 			String valueArr[] = value.toString().split("\t");
@@ -266,27 +272,25 @@ public class TFIDF {
 		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			float numDocsWithWord = 0;
 			ArrayList <String> valueList = new ArrayList<String> ();
+			// stores the balues in the Arraylist, also stores numDocsWithWord
 			for (Text value : values){
 				valueList.add(value.toString());
 				numDocsWithWord++;
 			}
 
 
-
+			// Access the Arraylist created above and arrange them in required format;
 			for (String value : valueList){
 				System.out.println(value);
 				String valueArr[] = value.split("=");
 				String dividedata[] = valueArr[1].toString().split("/");
-
+				
+				// finds the tfidf value
 				Double tfidfValue = (Double.parseDouble(dividedata[0])/Double.parseDouble(dividedata[1])) * Math.log(numDocs/numDocsWithWord);
 				
 				tfidfMap.put(new Text(valueArr[0]+"@"+key.toString()), new Text(tfidfValue.toString())) ;
 			}
-			
-
-	 
-			//Put the output (key,value) pair into the tfidfMap instead of doing a context.write
-			
+						
 		}
 		
 		// sorts the output (key,value) pairs that are contained in the tfidfMap
